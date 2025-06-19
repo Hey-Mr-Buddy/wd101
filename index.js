@@ -4,26 +4,39 @@
       const tbody = document.getElementById("userTableBody");
       const dobInput = document.getElementById("dob");
 
-      /* ───── Calculate date limits: 18–55 years from today ───── */
+     /* ───── Calculate date limits: 18–55 years from today ───── */
       const today = new Date();
-      const maxDate = new Date(today.getFullYear() - 18, today.getMonth(), today.getDate());
-      const minDate = new Date(today.getFullYear() - 55, today.getMonth(), today.getDate());
-      dobInput.max = maxDate.toISOString().split("T")[0];
-      dobInput.min = minDate.toISOString().split("T")[0];
+      const maxDateObj = new Date(today.getFullYear() - 18, today.getMonth(), today.getDate());
+      const minDateObj = new Date(today.getFullYear() - 55, today.getMonth(), today.getDate());
+      dobInput.max = maxDateObj.toISOString().split("T")[0];
+      dobInput.min = minDateObj.toISOString().split("T")[0];
+
+      // Precise age calculation
+      const calculateAge = (dobDate) => {
+        let age = today.getFullYear() - dobDate.getFullYear();
+        const monthDiff = today.getMonth() - dobDate.getMonth();
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dobDate.getDate())) {
+          age--; // hasn't had birthday yet this year
+        }
+        return age;
+      };
 
       /* ───── Custom DOB validity message ───── */
-      dobInput.addEventListener("input", () => {
+      function validateDobField() {
         if (!dobInput.value) {
           dobInput.setCustomValidity("");
           return;
         }
         const date = new Date(dobInput.value);
-        if (date < minDate || date > maxDate) {
+        const age = calculateAge(date);
+        if (age < 18 || age > 55) {
           dobInput.setCustomValidity("Age must be between 18 and 55 years.");
         } else {
           dobInput.setCustomValidity("");
         }
-      });
+      }
+
+      dobInput.addEventListener("input", validateDobField);
 
       /* ───── Local‑storage helpers ───── */
       const loadEntries = () => JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
