@@ -1,88 +1,107 @@
-      const STORAGE_KEY = "user-entries";
+/* ====== CONSTANTS & ELEMENTS ====== */
+const STORAGE_KEY = "user-entries";
 
-      const form = document.getElementById("registrationForm");
-      const tbody = document.getElementById("userTableBody");
-      const dobInput = document.getElementById("dob");
+const form = document.getElementById("registrationForm");
+const tbody = document.getElementById("userTableBody");
+const dobInput = document.getElementById("dob");
 
-     /* ───── Calculate date limits: 18–55 years from today ───── */
-      const today = new Date();
-      const maxDateObj = new Date(today.getFullYear() - 18, today.getMonth(), today.getDate());
-      const minDateObj = new Date(today.getFullYear() - 55, today.getMonth(), today.getDate());
-      dobInput.max = maxDateObj.toISOString().split("T")[0];
-      dobInput.min = minDateObj.toISOString().split("T")[0];
+/* ====== DATE‑OF‑BIRTH LIMITS (18 – 55 yrs) ====== */
+const today = new Date();
+const maxDateObj = new Date(
+  today.getFullYear() - 18,
+  today.getMonth(),
+  today.getDate()
+);
+const minDateObj = new Date(
+  today.getFullYear() - 55,
+  today.getMonth(),
+  today.getDate()
+);
 
-      // Precise age calculation
-      const calculateAge = (dobDate) => {
-        let age = today.getFullYear() - dobDate.getFullYear();
-        const monthDiff = today.getMonth() - dobDate.getMonth();
-        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dobDate.getDate())) {
-          age--; // hasn't had birthday yet this year
-        }
-        return age;
-      };
+// Set min & max on the input so the date‑picker respects the range
+dobInput.max = maxDateObj.toISOString().split("T")[0];
+dobInput.min = minDateObj.toISOString().split("T")[0];
 
-      /* ───── Custom DOB validity message ───── */
-      function validateDobField() {
-        if (!dobInput.value) {
-          dobInput.setCustomValidity("");
-          return;
-        }
-        const date = new Date(dobInput.value);
-        const age = calculateAge(date);
-        if (age < 18 || age > 55) {
-          dobInput.setCustomValidity("Age must be between 18 and 55 years.");
-        } else {
-          dobInput.setCustomValidity("");
-        }
-      }
+/* Precise, birthday‑aware age calculation */
+const calculateAge = (dobDate) => {
+  let age = today.getFullYear() - dobDate.getFullYear();
+  const monthDiff = today.getMonth() - dobDate.getMonth();
+  if (
+    monthDiff < 0 ||
+    (monthDiff === 0 && today.getDate() < dobDate.getDate())
+  ) {
+    age--; // birthday still ahead
+  }
+  return age;
+};
 
-      dobInput.addEventListener("input", validateDobField);
+/* Set browser‑native validation message for DOB */
+function validateDobField() {
+  if (!dobInput.value) {
+    dobInput.setCustomValidity("");
+    return;
+  }
+  const dobDate = new Date(dobInput.value);
+  const age = calculateAge(dobDate);
 
-      /* ───── Local‑storage helpers ───── */
-      const loadEntries = () => JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-      const saveEntries = (entries) => localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+  if (age < 18 || age > 55) {
+    dobInput.setCustomValidity("Age must be between 18 and 55 years.");
+  } else {
+    dobInput.setCustomValidity("");
+  }
+}
+dobInput.addEventListener("input", validateDobField);
 
-      /* ───── Render table ───── */
-      function displayEntries() {
-        const entries = loadEntries();
-        tbody.innerHTML = "";
-        entries.forEach((e) => {
-          const row = document.createElement("tr");
-          row.className = "hover:bg-gray-50";
-          row.innerHTML = `
-            <td class="px-6 py-3">${e.name}</td>
-            <td class="px-6 py-3">${e.email}</td>
-            <td class="px-6 py-3">${e.password}</td>
-            <td class="px-6 py-3">${e.dob}</td>
-            <td class="px-6 py-3">${e.acceptedTerms}</td>`;
-          tbody.appendChild(row);
-        });
-      }
+/* ====== LOCAL‑STORAGE HELPERS ====== */
+const loadEntries = () =>
+  JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+const saveEntries = (entries) =>
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
 
-      /* ───── Form submit ───── */
-      form.addEventListener("submit", (event) => {
-        event.preventDefault();
+/* ====== RENDER TABLE ====== */
+function displayEntries() {
+  const entries = loadEntries();
+  tbody.innerHTML = ""; // clear
+  entries.forEach((e) => {
+    const row = document.createElement("tr");
+    row.className = "hover:bg-gray-50";
+    row.innerHTML = `
+      <td class="px-6 py-3">${e.name}</td>
+      <td class="px-6 py-3">${e.email}</td>
+      <td class="px-6 py-3">${e.password}</td>
+      <td class="px-6 py-3">${e.dob}</td>
+      <td class="px-6 py-3">${e.acceptedTerms}</td>`;
+    tbody.appendChild(row);
+  });
+}
 
-        // If any field invalid, show native tooltips & stop
-        if (!form.checkValidity()) {
-          form.reportValidity(); // Triggers browser pop‑ups like the screenshot
-          return;
-        }
+/* ====== FORM SUBMIT ====== */
+form.addEventListener("submit", (event) => {
+  event.preventDefault();
 
-        const newEntry = {
-          name: document.getElementById("name").value.trim(),
-          email: document.getElementById("email").value.trim(),
-          password: document.getElementById("password").value,
-          dob: dobInput.value,
-          acceptedTerms: document.getElementById("acceptTerms").checked,
-        };
+  /* Re‑run DOB validation (covers programmatic fills by the test bot) */
+  validateDobField();
 
-        const entries = loadEntries();
-        entries.push(newEntry);
-        saveEntries(entries);
-        displayEntries();
-        form.reset();
-      });
+  // Let browser show tooltip if any rule fails
+  if (!form.checkValidity()) {
+    form.reportValidity();
+    return;
+  }
 
-      /* ───── Initial table render ───── */
-      displayEntries();
+  const newEntry = {
+    name: document.getElementById("name").value.trim(),
+    email: document.getElementById("email").value.trim(),
+    password: document.getElementById("password").value,
+    dob: dobInput.value,
+    acceptedTerms: document.getElementById("acceptTerms").checked,
+  };
+
+  const entries = loadEntries();
+  entries.push(newEntry);
+  saveEntries(entries);
+  displayEntries();
+  form.reset();
+});
+
+/* ====== INITIAL RENDER ====== */
+displayEntries();
